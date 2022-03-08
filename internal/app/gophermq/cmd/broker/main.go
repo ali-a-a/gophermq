@@ -1,0 +1,64 @@
+package broker
+
+import (
+	"errors"
+	"fmt"
+	"github.com/ali-a-a/gophermq/internal/app/gophermq/broker/handler"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+
+	"github.com/labstack/echo/v4"
+	"github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
+
+	"github.com/ali-a-a/gophermq/config"
+	"github.com/ali-a-a/gophermq/pkg/router"
+)
+
+func main(cfg config.Config) {
+	h := handler.NewHandler()
+
+	e := router.New()
+
+	e.GET("/ready", func(c echo.Context) error { return c.NoContent(http.StatusNoContent) })
+
+	api := e.Group("/api")
+
+	api.POST("/publish", h.Publish)
+
+	go func() {
+		if err := e.Start(fmt.Sprintf(":%d", cfg.Broker.Port)); !errors.Is(err, http.ErrServerClosed) && err != nil {
+			e.Logger.Fatal(err.Error())
+		}
+	}()
+
+	logrus.Info("broker is ready!")
+
+	signals := make(chan os.Signal, 1)
+	done := make(chan bool, 1)
+
+	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		sig := <-signals
+		logrus.Info("signal received: ", sig)
+		done <- true
+	}()
+
+	<-done
+}
+
+// Register registers cranmer command for gophermq binary.
+func Register(root *cobra.Command, cfg config.Config) {
+	root.AddCommand(
+		&cobra.Command{
+			Use:   "broker",
+			Short: "Run broker component",
+			Run: func(cmd *cobra.Command, args []string) {
+				main(cfg)
+			},
+		},
+	)
+}

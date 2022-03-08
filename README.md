@@ -1,1 +1,1 @@
-# bugmq
+# gophermq
