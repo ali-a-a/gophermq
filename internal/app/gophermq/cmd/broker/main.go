@@ -3,22 +3,24 @@ package broker
 import (
 	"errors"
 	"fmt"
+	"github.com/ali-a-a/gophermq/internal/app/gophermq/broker"
 	"github.com/ali-a-a/gophermq/internal/app/gophermq/broker/handler"
+	"github.com/labstack/echo/v4"
+	"github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
-
-	"github.com/labstack/echo/v4"
-	"github.com/sirupsen/logrus"
-	"github.com/spf13/cobra"
 
 	"github.com/ali-a-a/gophermq/config"
 	"github.com/ali-a-a/gophermq/pkg/router"
 )
 
 func main(cfg config.Config) {
-	h := handler.NewHandler()
+	mq := broker.NewGopherMQ(broker.MaxPending(cfg.Broker.MaxPending))
+
+	h := handler.NewHandler(mq)
 
 	e := router.New()
 
@@ -27,12 +29,24 @@ func main(cfg config.Config) {
 	api := e.Group("/api")
 
 	api.POST("/publish", h.Publish)
+	api.POST("/publish/async", h.PublishAsync)
 
 	go func() {
 		if err := e.Start(fmt.Sprintf(":%d", cfg.Broker.Port)); !errors.Is(err, http.ErrServerClosed) && err != nil {
 			e.Logger.Fatal(err.Error())
 		}
 	}()
+
+	for i := 0; i < len(cfg.Broker.Subjects); i++ {
+		_, err := mq.Subscribe(cfg.Broker.Subjects[i], func(event broker.Event) error {
+			logrus.Infof("subject: %s, data: %v", event.Subject(), string(event.Data()))
+
+			return nil
+		})
+		if err != nil {
+			return
+		}
+	}
 
 	logrus.Info("broker is ready!")
 
@@ -50,7 +64,7 @@ func main(cfg config.Config) {
 	<-done
 }
 
-// Register registers cranmer command for gophermq binary.
+// Register registers broker command for gophermq binary.
 func Register(root *cobra.Command, cfg config.Config) {
 	root.AddCommand(
 		&cobra.Command{

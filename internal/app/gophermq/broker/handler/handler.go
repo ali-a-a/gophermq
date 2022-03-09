@@ -10,14 +10,34 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+const (
+	// workerSize represents the number of workers in the pool
+	// that be used in async mode publish.
+	workerSize = 100
+)
+
 // Handler represents broker handler.
 type Handler struct {
-	mq broker.Broker
+	mq         broker.Broker
+	pubReqChan chan *PublishReq
 }
 
 // NewHandler creates new Handler.
-func NewHandler() *Handler {
-	return &Handler{}
+func NewHandler(mq broker.Broker) *Handler {
+	h := &Handler{
+		mq:         mq,
+		pubReqChan: make(chan *PublishReq),
+	}
+
+	h.startPublishChan(workerSize)
+
+	return h
+}
+
+func (h *Handler) startPublishChan(size int) {
+	for i := 0; i < size; i++ {
+		go h.publishAsync()
+	}
 }
 
 func (h *Handler) Publish(ctx echo.Context) error {
@@ -37,10 +57,18 @@ func (h *Handler) Publish(ctx echo.Context) error {
 	}
 
 	if err = h.mq.Publish(req.Subject, []byte(req.Data)); err != nil {
-		return ctx.JSON(http.StatusInternalServerError, echo.Map{"message": "publish error"})
+		return ctx.JSON(http.StatusInternalServerError, echo.Map{"message": err.Error()})
 	}
 
 	return ctx.JSON(http.StatusOK, echo.Map{"status": "ok"})
+}
+
+func (h *Handler) publishAsync() {
+	for event := range h.pubReqChan {
+		if err := h.mq.Publish(event.Subject, []byte(event.Data)); err != nil {
+			continue
+		}
+	}
 }
 
 func (h *Handler) PublishAsync(ctx echo.Context) error {
@@ -59,9 +87,7 @@ func (h *Handler) PublishAsync(ctx echo.Context) error {
 		return ctx.JSON(http.StatusInternalServerError, echo.Map{"message": "server error"})
 	}
 
-	if err = h.mq.Publish(req.Subject, []byte(req.Data)); err != nil {
-		return ctx.JSON(http.StatusInternalServerError, echo.Map{"message": "publish error"})
-	}
+	h.pubReqChan <- req
 
 	return ctx.JSON(http.StatusOK, echo.Map{"status": "ok"})
 }

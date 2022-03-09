@@ -27,7 +27,9 @@ type (
 
 	// Broker represents Broker configuration struct.
 	Broker struct {
-		Port int
+		Port       int
+		MaxPending int
+		Subjects   []string
 	}
 )
 
