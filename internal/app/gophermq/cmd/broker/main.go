@@ -30,23 +30,13 @@ func main(cfg config.Config) {
 
 	api.POST("/publish", h.Publish)
 	api.POST("/publish/async", h.PublishAsync)
+	api.POST("/subscribe", h.Subscribe)
 
 	go func() {
 		if err := e.Start(fmt.Sprintf(":%d", cfg.Broker.Port)); !errors.Is(err, http.ErrServerClosed) && err != nil {
 			e.Logger.Fatal(err.Error())
 		}
 	}()
-
-	for i := 0; i < len(cfg.Broker.Subjects); i++ {
-		_, err := mq.Subscribe(cfg.Broker.Subjects[i], func(event broker.Event) error {
-			logrus.Infof("subject: %s, data: %v", event.Subject(), string(event.Data()))
-
-			return nil
-		})
-		if err != nil {
-			return
-		}
-	}
 
 	logrus.Info("broker is ready!")
 

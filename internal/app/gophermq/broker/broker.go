@@ -120,19 +120,13 @@ func (gm *GopherMQ) Publish(subject string, data []byte) error {
 	gm.mutex.Lock()
 	defer gm.mutex.Unlock()
 
-	success := true
-
 	for _, sub := range subs {
 		if err := sub.handler(e); err != nil {
-			success = false
-
 			return err
 		}
 	}
 
-	if success {
-		delete(gm.queue, subject)
-	}
+	delete(gm.queue, subject)
 
 	return nil
 }

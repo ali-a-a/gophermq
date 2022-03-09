@@ -91,3 +91,31 @@ func (h *Handler) PublishAsync(ctx echo.Context) error {
 
 	return ctx.JSON(http.StatusOK, echo.Map{"status": "ok"})
 }
+
+func (h *Handler) Subscribe(ctx echo.Context) error {
+	req := &SubscribeReq{}
+
+	if err := ctx.Bind(req); err != nil {
+		logrus.Warnf("failed to bind request: %s", err.Error())
+
+		return ctx.JSON(http.StatusBadRequest, echo.Map{"message": "request's body is invalid"})
+	}
+
+	_, err := json.Marshal(req)
+	if err != nil {
+		logrus.Errorf("failed to marshal request: %s", err.Error())
+
+		return ctx.JSON(http.StatusInternalServerError, echo.Map{"message": "server error"})
+	}
+
+	_, err = h.mq.Subscribe(req.Subject, func(event broker.Event) error {
+		logrus.Infof("subject: %s, data: %v", event.Subject(), string(event.Data()))
+
+		return nil
+	})
+	if err != nil {
+		return ctx.JSON(http.StatusInternalServerError, echo.Map{"message": "failed to subscribe"})
+	}
+
+	return ctx.JSON(http.StatusOK, echo.Map{"status": "ok"})
+}

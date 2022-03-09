@@ -29,7 +29,6 @@ type (
 	Broker struct {
 		Port       int
 		MaxPending int
-		Subjects   []string
 	}
 )
 
