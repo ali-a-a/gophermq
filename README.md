@@ -36,4 +36,8 @@ now the server is up and running!
 ```
 
 ### Structure
+Messages can be published via publish endpoint. Then, Internally, the broker saves a new message in the in memory queue. After that, it loops through all the subscribers of the requested subject and calls their handler. If all of them are errorless, the queue is cleared. In case of any error, messages are kept. For async publish, it has publish/async endpoint. By this endpoint, a new message is submitted into the worker pool and then responds to the client.
   
+### Overflow
+Broker has `MaxPending` option for handling overflow cases. `MaxPending` represents the maximum
+number of messages can be stored in the broker. If new publish causes overflow, the server returns `broker overflow` error.
