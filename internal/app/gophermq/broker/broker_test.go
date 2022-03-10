@@ -87,7 +87,7 @@ func TestGopherMQ_Subscribe(t *testing.T) {
 
 	assert.NoError(t, err)
 
-	sub, err = gm.Subscribe(subject2, func(e Event) error {
+	_, err = gm.Subscribe(subject2, func(e Event) error {
 		assert.NoError(t, e.Error())
 		assert.Equal(t, subject2, e.Subject())
 		assert.Equal(t, []byte(data2), e.Data())
@@ -103,7 +103,7 @@ func TestGopherMQ_Subscribe(t *testing.T) {
 
 	var check bool
 
-	sub, err = gm.Subscribe(subject2, func(e Event) error {
+	_, err = gm.Subscribe(subject2, func(e Event) error {
 		assert.NoError(t, e.Error())
 		assert.Equal(t, subject2, e.Subject())
 		assert.Equal(t, []byte(data2), e.Data())
