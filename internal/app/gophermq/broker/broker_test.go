@@ -52,7 +52,7 @@ func TestGopherMQ_Publish(t *testing.T) {
 	assert.NotEqual(t, err, ErrMaxPending)
 	assert.NotEmpty(t, gm.queue[subject])
 
-	err = gm.Publish(subject, []byte(data))
+	_ = gm.Publish(subject, []byte(data))
 	err = gm.Publish(subject, []byte(data))
 	assert.Error(t, err)
 	assert.Equal(t, err, ErrMaxPending)
