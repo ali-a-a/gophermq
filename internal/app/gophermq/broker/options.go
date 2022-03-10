@@ -6,7 +6,6 @@ type Options struct {
 
 type Option func(*Options)
 
-
 // MaxPending is the maximum number of inflight messages.
 func MaxPending(m int) Option {
 	return func(o *Options) {
