@@ -61,8 +61,11 @@ func TestGopherMQ_Publish(t *testing.T) {
 func TestGopherMQ_Subscribe(t *testing.T) {
 	gm := NewGopherMQ(MaxPending(1))
 
-	subject := "test"
+	subject := "test.a"
 	data := "data"
+
+	subject2 := "test.b"
+	data2 := "data 2"
 
 	sub, err := gm.Subscribe(subject, func(e Event) error {
 		assert.NoError(t, e.Error())
@@ -83,4 +86,36 @@ func TestGopherMQ_Subscribe(t *testing.T) {
 	err = gm.Publish(subject, []byte(data))
 
 	assert.NoError(t, err)
+
+	_, err = gm.Subscribe(subject2, func(e Event) error {
+		assert.NoError(t, e.Error())
+		assert.Equal(t, subject2, e.Subject())
+		assert.Equal(t, []byte(data2), e.Data())
+
+		return errors.New("should fail")
+	})
+
+	assert.NoError(t, err)
+
+	err = gm.Publish(subject2, []byte(data2))
+
+	assert.Error(t, err)
+
+	var check bool
+
+	_, err = gm.Subscribe(subject2, func(e Event) error {
+		assert.NoError(t, e.Error())
+		assert.Equal(t, subject2, e.Subject())
+		assert.Equal(t, []byte(data2), e.Data())
+
+		check = true
+
+		return nil
+	})
+
+	assert.NoError(t, err)
+
+	time.Sleep(100*time.Millisecond)
+
+	assert.True(t, check)
 }
