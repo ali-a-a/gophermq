@@ -27,7 +27,7 @@
 - `/api/subscribe`
   ```json
   {
-    "subject": "string",
+    "subject": "string"
   }
   ```
 
