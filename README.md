@@ -8,6 +8,10 @@
 
 <img width="512" alt="Screen Shot 2022-03-09 at 2 35 15 PM" src="https://user-images.githubusercontent.com/68470999/157550261-a37ed2f8-b788-4651-99a3-07dbe89a1917.png">
 
+## HTTP Server
+For serving HTTP requests, the broker uses `Echo`, High performance, extensible, minimalist Go web framework.
+By default, it listens on port `8082`.
+You may find more information about this framework on this [link](https://github.com/labstack/echo).
 ## Endpoints
 
 - `/api/publish`
