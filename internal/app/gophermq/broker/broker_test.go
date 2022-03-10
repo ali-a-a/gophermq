@@ -52,8 +52,35 @@ func TestGopherMQ_Publish(t *testing.T) {
 	assert.NotEqual(t, err, ErrMaxPending)
 	assert.NotEmpty(t, gm.queue[subject])
 
-	err = gm.Publish(subject, []byte(data))
+	_ = gm.Publish(subject, []byte(data))
 	err = gm.Publish(subject, []byte(data))
 	assert.Error(t, err)
 	assert.Equal(t, err, ErrMaxPending)
+}
+
+func TestGopherMQ_Subscribe(t *testing.T) {
+	gm := NewGopherMQ(MaxPending(1))
+
+	subject := "test"
+	data := "data"
+
+	sub, err := gm.Subscribe(subject, func(e Event) error {
+		assert.NoError(t, e.Error())
+		assert.Equal(t, subject, e.Subject())
+		assert.Equal(t, []byte(data), e.Data())
+
+		return nil
+	})
+
+	assert.NoError(t, err)
+	assert.Equal(t, subject, sub.subj)
+	assert.NotEmpty(t, sub.id)
+
+	err = gm.Publish(subject, []byte(data))
+
+	assert.NoError(t, err)
+
+	err = gm.Publish(subject, []byte(data))
+
+	assert.NoError(t, err)
 }
