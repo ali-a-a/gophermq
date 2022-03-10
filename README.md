@@ -40,10 +40,10 @@ now the server is up and running!
 ```
 
 ### Structure
-Messages can be published via publish endpoint. Then, Internally, the broker saves a new message in the in memory queue. After that, it loops through all the subscribers of the requested subject and calls their handler. If all of them are errorless, the queue is cleared. In case of any error, messages are kept. For async publish, it has publish/async endpoint. By this endpoint, a new message is submitted into the worker pool and then responds to the client.
+Messages can be published via `publish` endpoint. Then, Internally, the broker saves a new message in the in memory queue. After that, it loops through all the subscribers of the requested subject and calls their handler. If all of them are errorless, the queue is cleared. In case of any error, messages are kept. For async publish, it has `publish/async` endpoint. By this endpoint, a new message is submitted into the worker pool and then responds to the client.
   
 ### Overflow
-Broker has a MaxPending option for handling overflow cases. MaxPending represents the maximum number of messages that can be stored in the broker. If a new publish causes overflow, the server returns a broker overflow error.
+Broker has a `MaxPending` option for handling overflow cases. MaxPending represents the maximum number of messages that can be stored in the broker. If a new publish causes overflow, the server returns a `broker overflow` error.
 
 ### MQ vs Shared Memory
 Message queues enable asynchronous communication, which means that the endpoints that are producing and consuming messages interact with the queue, not the shared memory. Producers can add requests to the queue without waiting for them to be processed. Consumers process messages only when they are available.
