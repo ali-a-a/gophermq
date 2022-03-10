@@ -42,5 +42,5 @@ Messages can be published via publish endpoint. Then, Internally, the broker sav
 ### Overflow
 Broker has a MaxPending option for handling overflow cases. MaxPending represents the maximum number of messages that can be stored in the broker. If a new publish causes overflow, the server returns a broker overflow error.
 
-### MQ vs Shanred Memory
+### MQ vs Shared Memory
 Message queues enable asynchronous communication, which means that the endpoints that are producing and consuming messages interact with the queue, not the shared memory. Producers can add requests to the queue without waiting for them to be processed. Consumers process messages only when they are available.
