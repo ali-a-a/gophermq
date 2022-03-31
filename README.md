@@ -131,6 +131,8 @@ CPU Cores: 8
 CPU Type: M1 chip
 ```
 \
+Results: \
+\
 <img width="646" alt="Screen Shot 2022-03-31 at 6 10 18 AM" src="https://user-images.githubusercontent.com/68470999/161066259-057ff49e-6fe9-478d-9dc4-1acad40fa8d2.png">
 <img width="941" alt="Screen Shot 2022-03-31 at 6 21 15 AM" src="https://user-images.githubusercontent.com/68470999/161066325-10babebe-b2ae-4b2e-b398-571a5a4b8b98.png">
 
