@@ -116,6 +116,29 @@ docker build -t gophermq .
 docker run -p 8082:8082 gophermq broker
 ```
 
+## Metrics
+Prometheus server is listening on port 9001.
+handler of the server is registered with `/metrics` pattern.
+Up to now, the broker has only 2 metrics. Request rate and request latency.
+
+## Load Test
+I used [k6](https://k6.io/) for load testing Gophermq. \
+\
+Machine:
+```
+RAM: 8GB
+CPU Cores: 8
+CPU Type: M1 chip
+```
+Results:
+<img width="646" alt="Screen Shot 2022-03-31 at 6 10 18 AM" src="https://user-images.githubusercontent.com/68470999/161066259-057ff49e-6fe9-478d-9dc4-1acad40fa8d2.png">
+<img width="941" alt="Screen Shot 2022-03-31 at 6 21 15 AM" src="https://user-images.githubusercontent.com/68470999/161066325-10babebe-b2ae-4b2e-b398-571a5a4b8b98.png">
+
+For running load test on your machine:
+```
+k6 run loadtest/loadtest.js
+```
+
 ## Structure
 Messages can be published via `publish` endpoint. Then, Internally, the broker saves a new message in the in-memory queue. Note that at least one subscriber on the subject should exist before publishing a new message. Else, the publisher got `ErrSubscriberNotFound`. \
 For async publish, it has a `publish/async` endpoint. By this endpoint, a new message is submitted into the worker pool and then responds to the client. \
@@ -127,3 +150,5 @@ Broker has a `MaxPending` option for handling overflow cases. MaxPending represe
 
 ## MQ vs Shared Memory
 Message queues enable asynchronous communication, which means that the endpoints that are producing and consuming messages interact with the queue, not the shared memory. Producers can add requests to the queue without waiting for them to be processed. Consumers process messages only when they are available.
+
+[k6]: https://k6.io/
