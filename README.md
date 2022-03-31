@@ -107,6 +107,15 @@ make run-broker
 now the server is up and running! 
 ```
 
+Or Using Docker
+
+```
+git clone git@github.com:ali-a-a/gophermq.git
+cd ./gophermq
+docker build -t gophermq . 
+docker run -p 8082:8082 gophermq broker
+```
+
 ## Structure
 Messages can be published via `publish` endpoint. Then, Internally, the broker saves a new message in the in-memory queue. Note that at least one subscriber on the subject should exist before publishing a new message. Else, the publisher got `ErrSubscriberNotFound`. \
 For async publish, it has a `publish/async` endpoint. By this endpoint, a new message is submitted into the worker pool and then responds to the client. \
