@@ -16,8 +16,9 @@ const Prefix = "GOPHERMQ_"
 type (
 	// Config represents application configuration struct.
 	Config struct {
-		Logger Logger `koanf:"logger"`
-		Broker Broker `koanf:"broker"`
+		Logger     Logger     `koanf:"logger"`
+		Broker     Broker     `koanf:"broker"`
+		Monitoring Monitoring `koanf:"monitoring"`
 	}
 
 	// Logger represents logger configuration struct.
@@ -29,6 +30,12 @@ type (
 	Broker struct {
 		Port       int `koanf:"port"`
 		MaxPending int `koanf:"max-pending"`
+	}
+
+	// Monitoring represents Monitoring configuration struct.
+	Monitoring struct {
+		Enable bool `koanf:"enable"`
+		Port   string  `koanf:"port"`
 	}
 )
 

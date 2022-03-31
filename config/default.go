@@ -10,5 +10,9 @@ func Default() Config {
 			Port:       8082,
 			MaxPending: 10,
 		},
+		Monitoring: Monitoring{
+			Enable: true,
+			Port:   ":9001",
+		},
 	}
 }
