@@ -25,7 +25,7 @@ type Broker interface {
 	// Publish is responsible to produce data for subject.
 	Publish(subject string, data []byte) error
 	// Subscribe is responsible to start observing subject.
-	Subscribe(subject string) (*subscriber, error)
+	Subscribe(subject string) (*Subscriber, error)
 	// Fetch is responsible to get data from subject.
 	Fetch(subject string, id string) ([][]byte, error)
 }
@@ -44,11 +44,11 @@ type GopherMQ struct {
 
 	queue       map[string][][]byte
 	pending     map[string]int
-	subscribers map[string][]*subscriber
+	subscribers map[string][]*Subscriber
 	mutex       sync.Mutex
 }
 
-type subscriber struct {
+type Subscriber struct {
 	ID   string
 	Subj string
 }
@@ -58,7 +58,7 @@ func NewGopherMQ(opts ...Option) *GopherMQ {
 	rand.Seed(time.Now().UnixNano())
 
 	queue := make(map[string][][]byte)
-	subscribers := make(map[string][]*subscriber)
+	subscribers := make(map[string][]*Subscriber)
 	pending := make(map[string]int)
 
 	gm := &GopherMQ{
@@ -100,14 +100,14 @@ func (gm *GopherMQ) Publish(subject string, data []byte) error {
 	return nil
 }
 
-func (gm *GopherMQ) Subscribe(subject string) (*subscriber, error) {
+func (gm *GopherMQ) Subscribe(subject string) (*Subscriber, error) {
 	if utils.BadSubject(subject) {
 		return nil, ErrBadSubject
 	}
 
 	id := uuid.New().String()
 
-	sub := &subscriber{
+	sub := &Subscriber{
 		ID:   id,
 		Subj: subject,
 	}
@@ -124,7 +124,7 @@ func (gm *GopherMQ) Fetch(subject string, id string) ([][]byte, error) {
 		return nil, ErrBadSubject
 	}
 
-	var target *subscriber
+	var target *Subscriber
 
 	gm.mutex.Lock()
 	subs := gm.subscribers[subject]
