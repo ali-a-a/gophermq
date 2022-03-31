@@ -123,6 +123,10 @@ func (h *Handler) Subscribe(ctx echo.Context) error {
 
 	sub, err := h.mq.Subscribe(req.Subject)
 	if err != nil {
+		if errors.Is(err, broker.ErrBadSubject) {
+			return ctx.JSON(http.StatusBadRequest, echo.Map{"message": err.Error()})
+		}
+
 		return ctx.JSON(http.StatusInternalServerError, echo.Map{"message": "failed to subscribe"})
 	}
 
