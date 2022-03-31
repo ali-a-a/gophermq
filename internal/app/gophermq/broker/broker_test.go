@@ -82,23 +82,23 @@ func TestGopherMQ_Subscribe(t *testing.T) {
 	subject32 := "test.c"
 
 	sub, err := gm.Subscribe(subject)
-	sub2, err := gm.Subscribe(subject2)
-	sub3, err := gm.Subscribe(subject3)
-	sub32, err := gm.Subscribe(subject32)
+	sub2, err2 := gm.Subscribe(subject2)
+	sub3, err3 := gm.Subscribe(subject3)
+	sub32, err4 := gm.Subscribe(subject32)
 
 	assert.NoError(t, err)
 	assert.Equal(t, subject, sub.Subj)
 	assert.NotEmpty(t, sub.ID)
 
-	assert.NoError(t, err)
+	assert.NoError(t, err2)
 	assert.Equal(t, subject2, sub2.Subj)
 	assert.NotEmpty(t, sub2.ID)
 
-	assert.NoError(t, err)
+	assert.NoError(t, err3)
 	assert.Equal(t, subject3, sub3.Subj)
 	assert.NotEmpty(t, sub3.ID)
 
-	assert.NoError(t, err)
+	assert.NoError(t, err4)
 	assert.Equal(t, subject32, sub32.Subj)
 	assert.NotEmpty(t, sub32.ID)
 
