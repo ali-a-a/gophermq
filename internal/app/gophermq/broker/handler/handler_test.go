@@ -3,14 +3,16 @@ package handler
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/ali-a-a/gophermq/internal/app/gophermq/broker"
-	"github.com/ali-a-a/gophermq/pkg/router"
-	"github.com/labstack/echo/v4"
-	"github.com/stretchr/testify/suite"
+	"errors"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/ali-a-a/gophermq/internal/app/gophermq/broker"
+	"github.com/ali-a-a/gophermq/pkg/router"
+	"github.com/labstack/echo/v4"
+	"github.com/stretchr/testify/suite"
 )
 
 type HandlerSuite struct {
@@ -112,6 +114,16 @@ func (suite *HandlerSuite) TestHandler_Publish() {
 			expectedStatus: http.StatusBadRequest,
 			expectedResp:   "{\"message\":\"request's body is invalid\"}\n",
 		},
+		{
+			name: "unknown error",
+			request: PublishReq{
+				Subject: "test.a",
+				Data:    ":(",
+			},
+			expectedStatus: http.StatusInternalServerError,
+			expectedResp:   "{\"message\":\"server error\"}\n",
+			err:            errors.New("unknown error"),
+		},
 	}
 
 	for _, tt := range cases {
@@ -157,9 +169,8 @@ func (suite *HandlerSuite) TestHandler_Subscribe() {
 		},
 		{
 			name: "bad subject",
-			request: PublishReq{
+			request: SubscribeReq{
 				Subject: "test a",
-				Data:    ":(",
 			},
 			expectedStatus: http.StatusBadRequest,
 			expectedResp:   "{\"message\":\"invalid subject\"}\n",
@@ -170,6 +181,15 @@ func (suite *HandlerSuite) TestHandler_Subscribe() {
 			request:        "bad request",
 			expectedStatus: http.StatusBadRequest,
 			expectedResp:   "{\"message\":\"request's body is invalid\"}\n",
+		},
+		{
+			name: "unknown error",
+			request: SubscribeReq{
+				Subject: "test.a",
+			},
+			expectedStatus: http.StatusInternalServerError,
+			expectedResp:   "{\"message\":\"server error\"}\n",
+			err:            errors.New("unknown error"),
 		},
 	}
 
@@ -213,9 +233,8 @@ func (suite *HandlerSuite) TestHandler_Fetch() {
 		},
 		{
 			name: "bad subject",
-			request: PublishReq{
+			request: FetchReq{
 				Subject: "test a",
-				Data:    ":(",
 			},
 			expectedStatus: http.StatusNotFound,
 			err:            broker.ErrBadID,
@@ -224,6 +243,14 @@ func (suite *HandlerSuite) TestHandler_Fetch() {
 			name:           "bad request",
 			request:        "bad request",
 			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name: "unknown error",
+			request: FetchReq{
+				Subject: "test.a",
+			},
+			expectedStatus: http.StatusInternalServerError,
+			err:            errors.New("unknown error"),
 		},
 	}
 

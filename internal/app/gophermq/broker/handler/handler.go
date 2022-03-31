@@ -127,7 +127,7 @@ func (h *Handler) Subscribe(ctx echo.Context) error {
 			return ctx.JSON(http.StatusBadRequest, echo.Map{"message": err.Error()})
 		}
 
-		return ctx.JSON(http.StatusInternalServerError, echo.Map{"message": "failed to subscribe"})
+		return ctx.JSON(http.StatusInternalServerError, echo.Map{"message": "server error"})
 	}
 
 	res := &SubscribeRes{
