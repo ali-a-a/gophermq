@@ -2,11 +2,12 @@ package broker
 
 import (
 	"errors"
-	"github.com/ali-a-a/gophermq/pkg/utils"
-	"github.com/google/uuid"
 	"math/rand"
 	"sync"
 	"time"
+
+	"github.com/ali-a-a/gophermq/pkg/utils"
+	"github.com/google/uuid"
 )
 
 var (
@@ -14,13 +15,19 @@ var (
 	ErrBadSubject = errors.New("invalid subject")
 	// ErrMaxPending is produced when overflow occurs.
 	ErrMaxPending = errors.New("broker overflow")
+	// ErrSubscriberNotFound could be produced in publish.
+	ErrSubscriberNotFound = errors.New("subscriber not found")
+	// ErrBadID could be produced in fetch.
+	ErrBadID = errors.New("bad id")
 )
 
 type Broker interface {
 	// Publish is responsible to produce data for subject.
 	Publish(subject string, data []byte) error
-	// Subscribe is responsible to consume data from subject.
-	Subscribe(subject string, handler Handler) (*subscriber, error)
+	// Subscribe is responsible to start observing subject.
+	Subscribe(subject string) (*subscriber, error)
+	// Fetch is responsible to get data from subject.
+	Fetch(subject string, id string) ([][]byte, error)
 }
 
 // Event is data that is passed through broker.
@@ -31,44 +38,19 @@ type Event interface {
 	Error() error
 }
 
-// Handler is used to process messages via a subscription of a subject.
-type Handler func(Event) error
-
 // GopherMQ is the Broker implementation.
 type GopherMQ struct {
 	opts Options
 
 	queue       map[string][][]byte
+	pending     map[string]int
 	subscribers map[string][]*subscriber
 	mutex       sync.Mutex
 }
 
 type subscriber struct {
-	id      string
-	subj    string
-	handler Handler
-}
-
-type event struct {
-	subj string
-	err  error
-	data []byte
-}
-
-func (m *event) Subject() string {
-	return m.subj
-}
-
-func (m *event) Data() []byte {
-	return m.data
-}
-
-func (m *event) Ack() error {
-	return nil
-}
-
-func (m *event) Error() error {
-	return m.err
+	ID   string
+	Subj string
 }
 
 // NewGopherMQ returns new GopherMQ.
@@ -77,10 +59,12 @@ func NewGopherMQ(opts ...Option) *GopherMQ {
 
 	queue := make(map[string][][]byte)
 	subscribers := make(map[string][]*subscriber)
+	pending := make(map[string]int)
 
 	gm := &GopherMQ{
 		queue:       queue,
 		subscribers: subscribers,
+		pending:     pending,
 	}
 
 	for _, o := range opts {
@@ -96,66 +80,78 @@ func (gm *GopherMQ) Publish(subject string, data []byte) error {
 	}
 
 	gm.mutex.Lock()
+	defer gm.mutex.Unlock()
 
-	if len(gm.queue[subject]) > gm.opts.MaxPending {
-		gm.mutex.Unlock()
-
+	if gm.pending[subject] > gm.opts.MaxPending {
 		return ErrMaxPending
 	}
 
-	gm.queue[subject] = append(gm.queue[subject], data)
-
 	subs, ok := gm.subscribers[subject]
-
-	gm.mutex.Unlock()
 	if !ok {
-		return nil
+		return ErrSubscriberNotFound
 	}
-
-	e := &event{
-		subj: subject,
-		data: data,
-	}
-
-	gm.mutex.Lock()
-	defer gm.mutex.Unlock()
 
 	for _, sub := range subs {
-		if err := sub.handler(e); err != nil {
-			return err
-		}
+		gm.pending[subject] += 1
+		key := utils.SubjectKey(sub.Subj, sub.ID)
+		gm.queue[key] = append(gm.queue[key], data)
 	}
-
-	delete(gm.queue, subject)
 
 	return nil
 }
 
-func (gm *GopherMQ) Subscribe(subject string, handler Handler) (*subscriber, error) {
+func (gm *GopherMQ) Subscribe(subject string) (*subscriber, error) {
 	if utils.BadSubject(subject) {
 		return nil, ErrBadSubject
 	}
 
+	id := uuid.New().String()
+
 	sub := &subscriber{
-		id:      uuid.New().String(),
-		subj:    subject,
-		handler: handler,
+		ID:   id,
+		Subj: subject,
 	}
 
 	gm.mutex.Lock()
 	gm.subscribers[subject] = append(gm.subscribers[subject], sub)
 	gm.mutex.Unlock()
 
-	go func() {
-		for _, msg := range gm.queue[subject] {
-			_ = handler(&event{
-				subj: subject,
-				data: msg,
-			})
-		}
-
-		delete(gm.queue, subject)
-	}()
-
 	return sub, nil
+}
+
+func (gm *GopherMQ) Fetch(subject string, id string) ([][]byte, error) {
+	if utils.BadSubject(subject) {
+		return nil, ErrBadSubject
+	}
+
+	var target *subscriber
+
+	gm.mutex.Lock()
+	subs := gm.subscribers[subject]
+	gm.mutex.Unlock()
+
+	for _, sub := range subs {
+		if sub.ID == id {
+			target = sub
+		}
+	}
+
+	if target == nil {
+		return nil, ErrBadID
+	}
+
+	key := utils.SubjectKey(subject, id)
+
+	gm.mutex.Lock()
+	data := gm.queue[key]
+
+	gm.pending[subject] -= len(data)
+	if gm.pending[subject] < 0 {
+		gm.pending[subject] = 0
+	}
+
+	delete(gm.queue, key)
+	gm.mutex.Unlock()
+
+	return data, nil
 }

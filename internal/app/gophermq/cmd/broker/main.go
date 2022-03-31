@@ -31,6 +31,7 @@ func main(cfg config.Config) {
 	api.POST("/publish", h.Publish)
 	api.POST("/publish/async", h.PublishAsync)
 	api.POST("/subscribe", h.Subscribe)
+	api.POST("/fetch", h.Fetch)
 
 	go func() {
 		if err := e.Start(fmt.Sprintf(":%d", cfg.Broker.Port)); !errors.Is(err, http.ErrServerClosed) && err != nil {
