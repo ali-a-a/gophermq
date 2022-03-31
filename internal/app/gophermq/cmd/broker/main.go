@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/ali-a-a/gophermq/internal/app/gophermq/broker"
 	"github.com/ali-a-a/gophermq/internal/app/gophermq/broker/handler"
+	"github.com/ali-a-a/gophermq/metric"
 	"github.com/labstack/echo/v4"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -18,6 +19,8 @@ import (
 )
 
 func main(cfg config.Config) {
+	go metric.StartPrometheusServer(cfg.Monitoring)
+
 	mq := broker.NewGopherMQ(broker.MaxPending(cfg.Broker.MaxPending))
 
 	h := handler.NewHandler(mq)

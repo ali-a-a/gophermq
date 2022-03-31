@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/ali-a-a/gophermq/internal/app/gophermq/broker"
 
@@ -15,6 +16,9 @@ const (
 	// workerSize represents the number of workers in the pool
 	// that be used in async mode publish.
 	workerSize = 100
+
+	// unknownStatus is used by metrics.
+	unknownStatus = -1
 )
 
 // Handler represents broker handler.
@@ -42,10 +46,20 @@ func (h *Handler) startPublishChan(size int) {
 }
 
 func (h *Handler) Publish(ctx echo.Context) error {
+	startTime := time.Now()
+
+	status := unknownStatus
+
 	req := &PublishReq{}
+
+	defer func() {
+		metrics.record("publish", status, startTime)
+	}()
 
 	if err := ctx.Bind(req); err != nil {
 		logrus.Warnf("failed to bind request: %s", err.Error())
+
+		status = http.StatusBadRequest
 
 		return ctx.JSON(http.StatusBadRequest, echo.Map{"message": "request's body is invalid"})
 	}
@@ -54,24 +68,36 @@ func (h *Handler) Publish(ctx echo.Context) error {
 	if err != nil {
 		logrus.Errorf("failed to marshal request: %s", err.Error())
 
+		status = http.StatusInternalServerError
+
 		return ctx.JSON(http.StatusInternalServerError, echo.Map{"message": "server error"})
 	}
 
 	if err = h.mq.Publish(req.Subject, []byte(req.Data)); err != nil {
 		if errors.Is(err, broker.ErrMaxPending) {
+			status = http.StatusTooManyRequests
+
 			return ctx.JSON(http.StatusTooManyRequests, echo.Map{"message": err.Error()})
 		}
 
 		if errors.Is(err, broker.ErrSubscriberNotFound) {
+			status = http.StatusNotFound
+
 			return ctx.JSON(http.StatusNotFound, echo.Map{"message": err.Error()})
 		}
 
 		if errors.Is(err, broker.ErrBadSubject) {
+			status = http.StatusBadRequest
+
 			return ctx.JSON(http.StatusBadRequest, echo.Map{"message": err.Error()})
 		}
 
+		status = http.StatusInternalServerError
+
 		return ctx.JSON(http.StatusInternalServerError, echo.Map{"message": "server error"})
 	}
+
+	status = http.StatusOK
 
 	return ctx.JSON(http.StatusOK, echo.Map{"status": "ok"})
 }
@@ -106,10 +132,20 @@ func (h *Handler) PublishAsync(ctx echo.Context) error {
 }
 
 func (h *Handler) Subscribe(ctx echo.Context) error {
+	startTime := time.Now()
+
+	status := unknownStatus
+
 	req := &SubscribeReq{}
+
+	defer func() {
+		metrics.record("subscribe", status, startTime)
+	}()
 
 	if err := ctx.Bind(req); err != nil {
 		logrus.Warnf("failed to bind request: %s", err.Error())
+
+		status = http.StatusBadRequest
 
 		return ctx.JSON(http.StatusBadRequest, echo.Map{"message": "request's body is invalid"})
 	}
@@ -118,14 +154,20 @@ func (h *Handler) Subscribe(ctx echo.Context) error {
 	if err != nil {
 		logrus.Errorf("failed to marshal request: %s", err.Error())
 
+		status = http.StatusInternalServerError
+
 		return ctx.JSON(http.StatusInternalServerError, echo.Map{"message": "server error"})
 	}
 
 	sub, err := h.mq.Subscribe(req.Subject)
 	if err != nil {
 		if errors.Is(err, broker.ErrBadSubject) {
+			status = http.StatusBadRequest
+
 			return ctx.JSON(http.StatusBadRequest, echo.Map{"message": err.Error()})
 		}
+
+		status = http.StatusInternalServerError
 
 		return ctx.JSON(http.StatusInternalServerError, echo.Map{"message": "server error"})
 	}
@@ -135,14 +177,26 @@ func (h *Handler) Subscribe(ctx echo.Context) error {
 		ID:      sub.ID,
 	}
 
+	status = http.StatusOK
+
 	return ctx.JSON(http.StatusOK, echo.Map{"subject": res.Subject, "id": res.ID})
 }
 
 func (h *Handler) Fetch(ctx echo.Context) error {
+	startTime := time.Now()
+
+	status := unknownStatus
+
 	req := &FetchReq{}
+
+	defer func() {
+		metrics.record("fetch", status, startTime)
+	}()
 
 	if err := ctx.Bind(req); err != nil {
 		logrus.Warnf("failed to bind request: %s", err.Error())
+
+		status = http.StatusBadRequest
 
 		return ctx.JSON(http.StatusBadRequest, echo.Map{"message": "request's body is invalid"})
 	}
@@ -151,14 +205,20 @@ func (h *Handler) Fetch(ctx echo.Context) error {
 	if err != nil {
 		logrus.Errorf("failed to marshal request: %s", err.Error())
 
+		status = http.StatusInternalServerError
+
 		return ctx.JSON(http.StatusInternalServerError, echo.Map{"message": "server error"})
 	}
 
 	data, err := h.mq.Fetch(req.Subject, req.ID)
 	if err != nil {
 		if errors.Is(err, broker.ErrBadID) {
+			status = http.StatusNotFound
+
 			return ctx.JSON(http.StatusNotFound, echo.Map{"message": err.Error()})
 		}
+
+		status = http.StatusInternalServerError
 
 		return ctx.JSON(http.StatusInternalServerError, echo.Map{"message": "server error"})
 	}
@@ -174,6 +234,8 @@ func (h *Handler) Fetch(ctx echo.Context) error {
 		ID:      req.ID,
 		Data:    finalData,
 	}
+
+	status = http.StatusOK
 
 	return ctx.JSON(http.StatusOK, echo.Map{"subject": res.Subject, "id": res.ID, "data": res.Data})
 }
