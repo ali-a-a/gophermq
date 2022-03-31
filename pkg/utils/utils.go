@@ -1,6 +1,9 @@
 package utils
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+)
 
 // BadSubject will do quick test on whether a subject is acceptable.
 // Spaces are not allowed and all tokens should be > 0 in len.
@@ -18,4 +21,10 @@ func BadSubject(subj string) bool {
 	}
 
 	return false
+}
+
+// SubjectKey creates new subject key based on
+// subject and subscription id.
+func SubjectKey(subject, id string) string {
+	return fmt.Sprintf("%s:%s", subject, id)
 }

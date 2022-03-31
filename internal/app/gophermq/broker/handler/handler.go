@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/ali-a-a/gophermq/internal/app/gophermq/broker"
@@ -57,7 +58,19 @@ func (h *Handler) Publish(ctx echo.Context) error {
 	}
 
 	if err = h.mq.Publish(req.Subject, []byte(req.Data)); err != nil {
-		return ctx.JSON(http.StatusInternalServerError, echo.Map{"message": err.Error()})
+		if errors.Is(err, broker.ErrMaxPending) {
+			return ctx.JSON(http.StatusTooManyRequests, echo.Map{"message": err.Error()})
+		}
+
+		if errors.Is(err, broker.ErrSubscriberNotFound) {
+			return ctx.JSON(http.StatusNotFound, echo.Map{"message": err.Error()})
+		}
+
+		if errors.Is(err, broker.ErrBadSubject) {
+			return ctx.JSON(http.StatusBadRequest, echo.Map{"message": err.Error()})
+		}
+
+		return ctx.JSON(http.StatusInternalServerError, echo.Map{"message": "server error"})
 	}
 
 	return ctx.JSON(http.StatusOK, echo.Map{"status": "ok"})
@@ -108,14 +121,55 @@ func (h *Handler) Subscribe(ctx echo.Context) error {
 		return ctx.JSON(http.StatusInternalServerError, echo.Map{"message": "server error"})
 	}
 
-	_, err = h.mq.Subscribe(req.Subject, func(event broker.Event) error {
-		logrus.Infof("subject: %s, data: %v", event.Subject(), string(event.Data()))
-
-		return nil
-	})
+	sub, err := h.mq.Subscribe(req.Subject)
 	if err != nil {
 		return ctx.JSON(http.StatusInternalServerError, echo.Map{"message": "failed to subscribe"})
 	}
 
-	return ctx.JSON(http.StatusOK, echo.Map{"status": "ok"})
+	res := &SubscribeRes{
+		Subject: sub.Subj,
+		ID:      sub.ID,
+	}
+
+	return ctx.JSON(http.StatusOK, echo.Map{"subject": res.Subject, "id": res.ID})
+}
+
+func (h *Handler) Fetch(ctx echo.Context) error {
+	req := &FetchReq{}
+
+	if err := ctx.Bind(req); err != nil {
+		logrus.Warnf("failed to bind request: %s", err.Error())
+
+		return ctx.JSON(http.StatusBadRequest, echo.Map{"message": "request's body is invalid"})
+	}
+
+	_, err := json.Marshal(req)
+	if err != nil {
+		logrus.Errorf("failed to marshal request: %s", err.Error())
+
+		return ctx.JSON(http.StatusInternalServerError, echo.Map{"message": "server error"})
+	}
+
+	data, err := h.mq.Fetch(req.Subject, req.ID)
+	if err != nil {
+		if errors.Is(err, broker.ErrBadID) {
+			return ctx.JSON(http.StatusNotFound, echo.Map{"message": err.Error()})
+		}
+
+		return ctx.JSON(http.StatusInternalServerError, echo.Map{"message": "server error"})
+	}
+
+	finalData := make([]string, len(data))
+
+	for i := range data {
+		finalData[i] = string(data[i])
+	}
+
+	res := &FetchRes{
+		Subject: req.Subject,
+		ID:      req.ID,
+		Data:    finalData,
+	}
+
+	return ctx.JSON(http.StatusOK, echo.Map{"subject": res.Subject, "id": res.ID, "data": res.Data})
 }

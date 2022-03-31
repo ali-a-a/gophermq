@@ -27,8 +27,8 @@ type (
 
 	// Broker represents Broker configuration struct.
 	Broker struct {
-		Port       int
-		MaxPending int
+		Port       int `koanf:"port"`
+		MaxPending int `koanf:"max-pending"`
 	}
 )
 
