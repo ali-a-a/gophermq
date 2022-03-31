@@ -14,24 +14,88 @@ By default, it listens on port `8082`.
 You may find more information about this framework on this [link](https://github.com/labstack/echo).
 ## Endpoints
 
-- `/api/publish`
+- `/api/publish` \
+  \
+  Request:
   ```json
   {
     "subject": "string",
     "data": "string"
   }
   ```
-- `/api/publish/async`
+  \
+  Responses:
+  ```json
+  {
+    "status": "ok"
+  }
+  ```
+  or
+  ```json
+  {
+    "message": "error message"
+  }
+  ```
+- `/api/publish/async` \
+  \
+  Response:
   ```json
   {
     "subject": "string",
     "data": "string"
   }
   ```
-- `/api/subscribe`
+  \
+  Response:
+  ```json
+  {
+    "status": "ok"
+  }
+  ```
+- `/api/subscribe` \
+  \
+  Request:
   ```json
   {
     "subject": "string"
+  }
+  ```
+  \
+  Responses:
+  ```json
+  {
+    "id": "string",
+    "subject": "string"
+  }
+  ```
+  or
+  ```json
+  {
+    "message": "error message"
+  }
+  ```
+- `/api/fetch` \
+  \
+  Request:
+  ```json
+  {
+    "subject": "string",
+    "id": "string"
+  }
+  ```
+  \
+  Responses:
+  ```json
+  {
+    "subject": "string",
+    "id": "string",
+    "data": []
+  }
+  ```
+  or
+  ```json
+  {
+    "message": "error message"
   }
   ```
 
@@ -44,8 +108,11 @@ now the server is up and running!
 ```
 
 ## Structure
-Messages can be published via `publish` endpoint. Then, Internally, the broker saves a new message in the in memory queue. After that, it loops through all the subscribers of the requested subject and calls their handler. If all of them are errorless, the queue is cleared. In case of any error, messages are kept. For async publish, it has `publish/async` endpoint. By this endpoint, a new message is submitted into the worker pool and then responds to the client.
-  
+Messages can be published via `publish` endpoint. Then, Internally, the broker saves a new message in the in-memory queue. Note that at least one subscriber on the subject should exist before publishing a new message. Else, the publisher got `ErrSubscriberNotFound`. \
+For async publish, it has a `publish/async` endpoint. By this endpoint, a new message is submitted into the worker pool and then responds to the client. \
+For subscription on subjects, the server has a `subscribe` endpoint. In successful cases, it returns the id of the subscriber. This id is used in a `fetch` endpoint. \
+For fetching messages, you should use the `fetch` endpoint. After calling this endpoint, all the pending messages for the specific subscriber are consumed.
+
 ## Overflow
 Broker has a `MaxPending` option for handling overflow cases. MaxPending represents the maximum number of messages that can be stored in the broker. If a new publish causes overflow, the server returns a `broker overflow` error.
 
